@@ -1,0 +1,50 @@
+appId: studio.aurum.forge
+productName: Aurum Studio
+copyright: Copyright © 2026 Aurum Studio contributors
+
+directories:
+  output: dist
+  buildResources: build
+
+files:
+  - electron/**/*
+  - package.json
+
+extraResources:
+  - from: .next/standalone
+    to: app-server
+  - from: .next/static
+    to: app-server/.next/static
+  - from: public
+    to: app-server/public
+
+asar: true
+compression: maximum
+
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+  artifactName: ${productName}-${version}-win-${arch}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Aurum Studio
+
+mac:
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  category: public.app-category.graphics-design
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+
+linux:
+  target:
+    - AppImage
+    - deb
+  category: Graphics
+  maintainer: Aurum Studio contributors
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}

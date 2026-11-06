@@ -1,0 +1,7 @@
+node_modules/
+.next/
+dist/
+.aurum-data/
+*.log
+.DS_Store
+.env*

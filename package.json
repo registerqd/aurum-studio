@@ -1,0 +1,48 @@
+{
+  "name": "aurum-studio",
+  "version": "1.1.0",
+  "description": "Aurum Studio — layered SVG / bitmap to printable 3D badge workbench",
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint && node scripts/check-design-system.mjs",
+    "check:design-system": "node scripts/check-design-system.mjs",
+    "electron:dev": "cross-env AURUM_DEV_URL=http://localhost:3000 electron .",
+    "electron:build": "cross-env AURUM_ELECTRON=1 next build && electron-builder --config electron-builder.yml",
+    "dist": "npm run electron:build"
+  },
+  "keywords": [],
+  "author": "Aurum Studio contributors",
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@openusd-wasm/pxr": "^0.0.6",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
+    "@types/omggif": "^1.0.5",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.11.0",
+    "next": "^16.2.4",
+    "omggif": "^1.0.10",
+    "polygon-clipping": "^0.15.7",
+    "prores-wasm-encoder": "^0.2.3",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "three": "^0.184.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.2.4",
+    "patch-package": "^8.0.1",
+    "typescript": "^6.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "cross-env": "^7.0.3"
+  },
+  "main": "electron/main.js"
+}

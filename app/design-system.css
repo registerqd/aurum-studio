@@ -1,0 +1,54 @@
+.app-shell {
+  --ds-space-1: 4px;
+  --ds-space-2: 8px;
+  --ds-space-3: 12px;
+  --ds-space-4: 16px;
+  --ds-section-padding-x: 14px;
+  --ds-section-padding-y: 18px;
+  --ds-control-height: 32px;
+  --ds-radius-control: 6px;
+  --ds-radius-card: 8px;
+  --ds-font-size-label: 11px;
+  --ds-font-size-control: 12px;
+  --ds-font-weight-medium: 600;
+  --ds-font-weight-semibold: 700;
+  --ds-text-primary: #242424;
+  --ds-text-secondary: #626262;
+  --ds-text-tertiary: #818181;
+  --ds-surface-raised: #ffffff;
+  --ds-surface-subtle: #f7f7f7;
+  --ds-surface-input: #ffffff;
+  --ds-surface-control: #ffffff;
+  --ds-surface-control-hover: #f6f6f6;
+  --ds-surface-hover: rgb(0 0 0 / 5%);
+  --ds-surface-segmented: #ededed;
+  --ds-border-subtle: #e4e4e4;
+  --ds-border-control: #dcdcdc;
+  --ds-border-control-hover: #c6c6c6;
+  --ds-focus: #1e1e1e;
+  --ds-action-primary: #1e1e1e;
+  --ds-action-primary-hover: #000000;
+  --ds-action-primary-text: #ffffff;
+  --ds-shadow-control: 0 1px 2px rgb(0 0 0 / 10%), 0 0 0 1px rgb(0 0 0 / 3%);
+}
+
+.app-shell[data-theme="dark"] {
+  --ds-text-primary: #eeeeee;
+  --ds-text-secondary: #b7b7b7;
+  --ds-text-tertiary: #999999;
+  --ds-surface-raised: #404040;
+  --ds-surface-subtle: #2d2d2d;
+  --ds-surface-input: #222222;
+  --ds-surface-control: #303030;
+  --ds-surface-control-hover: #3a3a3a;
+  --ds-surface-hover: rgb(255 255 255 / 8%);
+  --ds-surface-segmented: #1d1d1d;
+  --ds-border-subtle: #424242;
+  --ds-border-control: #505050;
+  --ds-border-control-hover: #696969;
+  --ds-focus: #ffffff;
+  --ds-action-primary: #ffffff;
+  --ds-action-primary-hover: #dddddd;
+  --ds-action-primary-text: #171717;
+  --ds-shadow-control: 0 1px 2px rgb(0 0 0 / 38%);
+}

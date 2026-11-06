@@ -1,0 +1,26 @@
+<svg width="96" height="96" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="body" cx="31%" cy="23%" r="73%">
+      <stop offset="0%" stop-color="#ffd2a4"/>
+      <stop offset="30%" stop-color="#d9844e"/>
+      <stop offset="62%" stop-color="#a24d24"/>
+      <stop offset="100%" stop-color="#4f1d0b"/>
+    </radialGradient>
+    <linearGradient id="shine" x1="20" y1="10" x2="78" y2="86">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity=".58"/>
+      <stop offset="40%" stop-color="#fff0de" stop-opacity=".1"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity=".18"/>
+    </linearGradient>
+    <pattern id="brush" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(16)">
+      <path d="M0 1.2H5" stroke="#ffe0bf" stroke-opacity=".16" stroke-width=".4"/>
+      <path d="M0 4H5" stroke="#4a1b08" stroke-opacity=".16" stroke-width=".35"/>
+    </pattern>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="5" flood-color="#1f0902" flood-opacity=".42"/>
+    </filter>
+  </defs>
+  <circle cx="48" cy="49" r="34" fill="url(#body)" filter="url(#shadow)"/>
+  <circle cx="48" cy="49" r="34" fill="url(#brush)"/>
+  <circle cx="48" cy="49" r="34" fill="url(#shine)"/>
+  <ellipse cx="36" cy="30" rx="15" ry="8" fill="#fff1df" opacity=".5" transform="rotate(-30 36 30)"/>
+</svg>

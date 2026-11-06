@@ -1,0 +1,967 @@
+"use client";
+
+import { OrbitControls } from "@react-three/drei";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
+import {
+  Download,
+  Play,
+  RotateCcw,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as THREE from "three";
+import { LocalRoomEnvironment } from "@/components/local-room-environment";
+import {
+  Button,
+  FieldGrid,
+  FieldRow,
+  InspectorCard,
+  InspectorSection,
+  InspectorStack,
+  InspectorSummary,
+  NumberField,
+  SegmentedControl,
+  Select,
+} from "@/components/ui/inspector";
+import { buildMedalGroup, disposeObject3D } from "@/lib/model-builder";
+import {
+  DEFAULT_PRESENTATION_DURATION_SECONDS,
+  DEFAULT_PRESENTATION_FLIP_END_ANGLES,
+  DEFAULT_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS,
+  DEFAULT_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND,
+  DEFAULT_PRESENTATION_FLIP_START_ANGLES,
+  DEFAULT_PRESENTATION_FRAME_RATE,
+  DEFAULT_PRESENTATION_QUALITY,
+  DEFAULT_PRESENTATION_SCALE,
+  DEFAULT_PRESENTATION_SPIN_AXIS_ANIMATIONS,
+  DEFAULT_PRESENTATION_SPIN_START_ANGLES,
+  MAX_PRESENTATION_FLIP_ANGLE_DEGREES,
+  MAX_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS,
+  MAX_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND,
+  MAX_PRESENTATION_SCALE,
+  MAX_PRESENTATION_SPIN_AMPLITUDE_DEGREES,
+  MAX_PRESENTATION_SPIN_ANGLE_DEGREES,
+  MAX_PRESENTATION_SPIN_FREQUENCY_HZ,
+  MAX_PRESENTATION_SPIN_SPEED_DEG_PER_SECOND,
+  MIN_PRESENTATION_FLIP_ANGLE_DEGREES,
+  MIN_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS,
+  MIN_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND,
+  MIN_PRESENTATION_SCALE,
+  MIN_PRESENTATION_SPIN_AMPLITUDE_DEGREES,
+  MIN_PRESENTATION_SPIN_ANGLE_DEGREES,
+  MIN_PRESENTATION_SPIN_FREQUENCY_HZ,
+  MIN_PRESENTATION_SPIN_SPEED_DEG_PER_SECOND,
+  PRESENTATION_EXPORT_OPTIONS,
+  PRESENTATION_QUALITY_OPTIONS,
+  getCompatiblePresentationFrameRate,
+  getPresentationExportOption,
+  getPresentationFrameRateOptions,
+  getPresentationQualityOption,
+  getPresentationRotation,
+  type PresentationEulerAngles,
+  type PresentationExportConfig,
+  type PresentationExportFormat,
+  type PresentationFrameRate,
+  type PresentationExportQuality,
+  type PresentationMode,
+  type PresentationSpinAnimationMode,
+  type PresentationSpinAxisAnimation,
+  type PresentationSpinAxisAnimations,
+} from "@/lib/presentation-export";
+import {
+  enqueuePresentationExport,
+  type ExportSaveFileHandle,
+} from "@/lib/export-queue";
+import type { MedalSettings } from "@/lib/types";
+import { useI18n } from "@/lib/i18n";
+
+interface PresentationModeDialogProps {
+  disabled?: boolean;
+  fileStem: string;
+  onClose: () => void;
+  onStatus: (status: string) => void;
+  settings: MedalSettings;
+  svgText: string;
+}
+
+interface PresentationSavePickerWindow extends Window {
+  showSaveFilePicker?: (options: {
+    suggestedName: string;
+    types: Array<{
+      accept: Record<string, string[]>;
+      description: string;
+    }>;
+  }) => Promise<ExportSaveFileHandle>;
+}
+
+const MODE_OPTIONS: Array<{ label: string; value: PresentationMode }> = [
+  {
+    label: "Rotate",
+    value: "spin",
+  },
+  {
+    label: "Flip",
+    value: "flip",
+  },
+];
+
+const SPIN_AXIS_OPTIONS: Array<{
+  label: string;
+  value: keyof PresentationSpinAxisAnimations;
+}> = [
+  {
+    label: "X axis",
+    value: "x",
+  },
+  {
+    label: "Y axis",
+    value: "y",
+  },
+  {
+    label: "Z axis",
+    value: "z",
+  },
+];
+
+const SPIN_ANIMATION_MODE_OPTIONS: Array<{
+  label: string;
+  value: PresentationSpinAnimationMode;
+}> = [
+  {
+    label: "Linear",
+    value: "linear",
+  },
+  {
+    label: "Sine",
+    value: "sine",
+  },
+];
+
+const PRESENTATION_DIALOG_EXIT_MS = 260;
+const PRESENTATION_PREVIEW_FRAME_PADDING = 48;
+
+function ScaleControl({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: number) => void;
+  value: number;
+}) {
+  const percent = Math.round(value * 100);
+
+  return (
+    <FieldRow label={label}>
+      <span className="presentation-scale-field">
+        <input
+          aria-label={`${label} percentage`}
+          max={Math.round(MAX_PRESENTATION_SCALE * 100)}
+          min={Math.round(MIN_PRESENTATION_SCALE * 100)}
+          onChange={(event) => onChange(Number(event.target.value) / 100)}
+          step={1}
+          type="range"
+          value={percent}
+        />
+        <small>{percent}%</small>
+      </span>
+    </FieldRow>
+  );
+}
+
+function PresentationAnimatedModel({
+  config,
+  settings,
+  svgText,
+}: {
+  config: PresentationExportConfig;
+  settings: MedalSettings;
+  svgText: string;
+}) {
+  const wrapperRef = useRef<THREE.Group>(null);
+  const startTimeRef = useRef<number | null>(null);
+  const group = useMemo(
+    () => buildMedalGroup(svgText, settings),
+    [settings, svgText],
+  );
+
+  useEffect(() => {
+    return () => disposeObject3D(group);
+  }, [group]);
+
+  useEffect(() => {
+    startTimeRef.current = null;
+  }, [config]);
+
+  useFrame(({ clock }) => {
+    const wrapper = wrapperRef.current;
+
+    if (!wrapper) {
+      return;
+    }
+
+    startTimeRef.current ??= clock.elapsedTime;
+    const rotation = getPresentationRotation(
+      config,
+      clock.elapsedTime - startTimeRef.current,
+    );
+    wrapper.rotation.set(rotation.x, rotation.y, rotation.z);
+    wrapper.scale.setScalar(config.scale);
+  });
+
+  return (
+    <group ref={wrapperRef} scale={[config.scale, config.scale, config.scale]}>
+      <primitive object={group} />
+    </group>
+  );
+}
+
+function PresentationCameraTarget() {
+  const camera = useThree((state) => state.camera);
+
+  useEffect(() => {
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }, [camera]);
+
+  return null;
+}
+
+function PresentationPreview({
+  config,
+  settings,
+  svgText,
+}: {
+  config: PresentationExportConfig;
+  settings: MedalSettings;
+  svgText: string;
+}) {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [exportFrameSize, setExportFrameSize] = useState(0);
+
+  useEffect(() => {
+    const stage = stageRef.current;
+
+    if (!stage) {
+      return;
+    }
+
+    const updateExportFrameSize = () => {
+      const bounds = stage.getBoundingClientRect();
+      const nextSize = Math.max(
+        0,
+        Math.floor(
+          Math.min(bounds.width, bounds.height) -
+            PRESENTATION_PREVIEW_FRAME_PADDING,
+        ),
+      );
+
+      setExportFrameSize(nextSize);
+    };
+
+    updateExportFrameSize();
+
+    if (typeof ResizeObserver === "undefined") {
+      window.addEventListener("resize", updateExportFrameSize);
+
+      return () => {
+        window.removeEventListener("resize", updateExportFrameSize);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(updateExportFrameSize);
+    resizeObserver.observe(stage);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const exportFrameStyle =
+    exportFrameSize > 0
+      ? {
+          height: exportFrameSize,
+          width: exportFrameSize,
+        }
+      : undefined;
+
+  return (
+    <div className="presentation-preview-stage" ref={stageRef}>
+      <div
+        aria-label="Presentation export boundary"
+        className="presentation-preview-export-frame"
+        style={exportFrameStyle}
+      >
+        <Canvas
+          camera={{ position: [0, -7, 5.2], fov: 38 }}
+          dpr={[1, 2]}
+          gl={{
+            alpha: true,
+            antialias: true,
+            premultipliedAlpha: false,
+          }}
+          style={{ height: "100%", width: "100%" }}
+        >
+          <PresentationCameraTarget />
+          <ambientLight intensity={0.62} />
+          <directionalLight intensity={2.2} position={[4.5, -5.5, 8]} />
+          <directionalLight intensity={0.65} position={[-5, 3, 4]} />
+          <PresentationAnimatedModel
+            config={config}
+            settings={settings}
+            svgText={svgText}
+          />
+          <LocalRoomEnvironment />
+          <OrbitControls
+            makeDefault
+            enablePan={false}
+            enableRotate={false}
+            enableZoom={false}
+            target={[0, 0, 0]}
+          />
+        </Canvas>
+        <div aria-hidden="true" className="presentation-export-boundary" />
+      </div>
+    </div>
+  );
+}
+
+function formatByteSize(bytes: number) {
+  if (bytes >= 1024 * 1024 * 1024) {
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(1)}GB`;
+  }
+
+  return `${Math.max(1, Math.round(bytes / 1024 / 1024))}MB`;
+}
+
+export function PresentationModeDialog({
+  disabled = false,
+  fileStem,
+  onClose,
+  onStatus,
+  settings,
+  svgText,
+}: PresentationModeDialogProps) {
+  const { t } = useI18n();
+  const [mode, setMode] = useState<PresentationMode>("spin");
+  const [spinStartAngles, setSpinStartAngles] =
+    useState<PresentationEulerAngles>(DEFAULT_PRESENTATION_SPIN_START_ANGLES);
+  const [spinAxisAnimations, setSpinAxisAnimations] =
+    useState<PresentationSpinAxisAnimations>(
+      DEFAULT_PRESENTATION_SPIN_AXIS_ANIMATIONS,
+    );
+  const [flipStartAngles, setFlipStartAngles] =
+    useState<PresentationEulerAngles>(
+      DEFAULT_PRESENTATION_FLIP_START_ANGLES,
+    );
+  const [flipEndAngles, setFlipEndAngles] = useState<PresentationEulerAngles>(
+    DEFAULT_PRESENTATION_FLIP_END_ANGLES,
+  );
+  const [flipSpeed, setFlipSpeed] = useState(
+    DEFAULT_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND,
+  );
+  const [flipPlaybackInterval, setFlipPlaybackInterval] = useState(
+    DEFAULT_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS,
+  );
+  const [durationSeconds, setDurationSeconds] = useState(
+    DEFAULT_PRESENTATION_DURATION_SECONDS,
+  );
+  const [frameRate, setFrameRate] = useState<PresentationFrameRate>(
+    DEFAULT_PRESENTATION_FRAME_RATE,
+  );
+  const [quality, setQuality] = useState<PresentationExportQuality>(
+    DEFAULT_PRESENTATION_QUALITY,
+  );
+  const [spinScale, setSpinScale] = useState(DEFAULT_PRESENTATION_SCALE);
+  const [flipScale, setFlipScale] = useState(DEFAULT_PRESENTATION_SCALE);
+  const [format, setFormat] = useState<PresentationExportFormat>("mov");
+  const [isClosing, setIsClosing] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
+
+  const config = useMemo<PresentationExportConfig>(() => {
+    if (mode === "flip") {
+      return {
+        durationSeconds,
+        endAngles: flipEndAngles,
+        flipSpeedDegPerSecond: flipSpeed,
+        frameRate,
+        mode,
+        playbackIntervalSeconds: flipPlaybackInterval,
+        quality,
+        scale: flipScale,
+        startAngles: flipStartAngles,
+      };
+    }
+
+    return {
+      axisAnimations: spinAxisAnimations,
+      durationSeconds,
+      frameRate,
+      mode,
+      quality,
+      scale: spinScale,
+      startAngles: spinStartAngles,
+    };
+  }, [
+    durationSeconds,
+    flipEndAngles,
+    flipPlaybackInterval,
+    flipScale,
+    flipSpeed,
+    flipStartAngles,
+    frameRate,
+    mode,
+    quality,
+    spinAxisAnimations,
+    spinScale,
+    spinStartAngles,
+  ]);
+
+  const qualityOption = getPresentationQualityOption(quality);
+  const formatOption = getPresentationExportOption(format);
+  const frameRateOptions = getPresentationFrameRateOptions(format);
+  const compatibleFrameRate = getCompatiblePresentationFrameRate(
+    format,
+    frameRate,
+  );
+  const exportFrameCount = Math.max(
+    1,
+    Math.round(durationSeconds * compatibleFrameRate),
+  );
+  const estimatedMovSize =
+    format === "mov"
+      ? Math.round(
+          qualityOption.size * qualityOption.size * exportFrameCount * 0.38,
+        )
+      : null;
+  const activeScale = mode === "spin" ? spinScale : flipScale;
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        requestClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  });
+
+  useEffect(() => {
+    return () => {
+      if (closeTimerRef.current !== null) {
+        window.clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  function requestClose() {
+    if (isClosing) {
+      return;
+    }
+
+    setIsClosing(true);
+    closeTimerRef.current = window.setTimeout(() => {
+      closeTimerRef.current = null;
+      onClose();
+    }, PRESENTATION_DIALOG_EXIT_MS);
+  }
+
+  function updateSpinStartAngle(
+    axis: keyof PresentationEulerAngles,
+    value: number,
+  ) {
+    setSpinStartAngles((current) => ({
+      ...current,
+      [axis]: value,
+    }));
+  }
+
+  function updateSpinAxisAnimation(
+    axis: keyof PresentationSpinAxisAnimations,
+    patch: Partial<PresentationSpinAxisAnimation>,
+  ) {
+    setSpinAxisAnimations((current) => ({
+      ...current,
+      [axis]: {
+        ...current[axis],
+        ...patch,
+      },
+    }));
+  }
+
+  function updateFlipStartAngle(
+    axis: keyof PresentationEulerAngles,
+    value: number,
+  ) {
+    setFlipStartAngles((current) => ({
+      ...current,
+      [axis]: value,
+    }));
+  }
+
+  function updateFlipEndAngle(
+    axis: keyof PresentationEulerAngles,
+    value: number,
+  ) {
+    setFlipEndAngles((current) => ({
+      ...current,
+      [axis]: value,
+    }));
+  }
+
+  function updateActiveScale(value: number) {
+    if (mode === "spin") {
+      setSpinScale(value);
+      return;
+    }
+
+    setFlipScale(value);
+  }
+
+  function resetCurrentMode() {
+    if (mode === "spin") {
+      setSpinStartAngles(DEFAULT_PRESENTATION_SPIN_START_ANGLES);
+      setSpinAxisAnimations(DEFAULT_PRESENTATION_SPIN_AXIS_ANIMATIONS);
+      setSpinScale(DEFAULT_PRESENTATION_SCALE);
+      return;
+    }
+
+    setFlipStartAngles(DEFAULT_PRESENTATION_FLIP_START_ANGLES);
+    setFlipEndAngles(DEFAULT_PRESENTATION_FLIP_END_ANGLES);
+    setFlipSpeed(DEFAULT_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND);
+    setFlipPlaybackInterval(DEFAULT_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS);
+    setFlipScale(DEFAULT_PRESENTATION_SCALE);
+  }
+
+  function updateFormat(nextFormat: PresentationExportFormat) {
+    setFormat(nextFormat);
+    setFrameRate((current) =>
+      getCompatiblePresentationFrameRate(nextFormat, current),
+    );
+  }
+
+  async function queueExport() {
+    if (disabled) {
+      onStatus("Finish loading SVG before exporting");
+      return;
+    }
+
+    const fileName = `${fileStem}-presentation-${mode}.${formatOption.extension}`;
+    const saveHandle =
+      format === "mov"
+        ? await requestMovSaveHandle(fileName, formatOption.mimeType)
+        : undefined;
+
+    if (saveHandle === null) {
+      onStatus("MOV export canceled");
+      return;
+    }
+
+    enqueuePresentationExport({
+      config,
+      fileName,
+      format,
+      saveHandle,
+      settings,
+      svgText,
+    });
+    onStatus(`${formatOption.label} presentation export queued`);
+  }
+
+  return (
+    <section
+      aria-label={t("Presentation mode")}
+      aria-modal="true"
+      className={
+        isClosing
+          ? "presentation-dialog-shell closing"
+          : "presentation-dialog-shell"
+      }
+      role="dialog"
+    >
+      <div className="presentation-dialog" data-state={isClosing ? "closing" : "open"}>
+        <header className="presentation-dialog-header">
+          <div className="presentation-dialog-title">
+            <Play size={15} />
+            <span>{t("Presentation Mode")}</span>
+          </div>
+          <Button
+            aria-label={t("Close presentation mode")}
+            className="presentation-close"
+            onClick={requestClose}
+            title={t("Close")}
+            type="button"
+            variant="icon"
+          >
+            <X size={16} />
+          </Button>
+        </header>
+
+        <div className="presentation-dialog-body">
+          <PresentationPreview
+            config={config}
+            settings={settings}
+            svgText={svgText}
+          />
+
+          <aside className="presentation-controls-panel">
+            <InspectorSection icon={<SlidersHorizontal size={14} />} title={t("Mode")}>
+              <SegmentedControl
+                onChange={setMode}
+                options={MODE_OPTIONS.map((option) => ({
+                  ...option,
+                  label: t(option.label),
+                  icon:
+                    option.value === "spin" ? (
+                      <RotateCcw key="rotate" size={14} />
+                    ) : (
+                      <Play key="flip" size={14} />
+                    ),
+                }))}
+                value={mode}
+              />
+            </InspectorSection>
+
+            <InspectorSection
+              action={
+                <Button
+                  variant="secondary"
+                  onClick={resetCurrentMode}
+                  type="button"
+                >
+                  <RotateCcw size={12} />
+                  Reset
+                </Button>
+              }
+              icon={<SlidersHorizontal size={14} />}
+              title={t(mode === "spin" ? "Rotation" : "Flip")}
+            >
+              <InspectorStack>
+                <ScaleControl
+                  label={t("Scale")}
+                  onChange={updateActiveScale}
+                  value={activeScale}
+                />
+                {mode === "spin" ? (
+                  <>
+                    <InspectorCard title={t("Starting orientation")}>
+                      <FieldGrid>
+                        <NumberField
+                          ariaLabel="Rotate initial X angle"
+                          label="X"
+                          max={MAX_PRESENTATION_SPIN_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_SPIN_ANGLE_DEGREES}
+                          onChange={(value) => updateSpinStartAngle("x", value)}
+                          step={1}
+                          unit="deg"
+                          value={spinStartAngles.x}
+                        />
+                        <NumberField
+                          ariaLabel="Rotate initial Y angle"
+                          label="Y"
+                          max={MAX_PRESENTATION_SPIN_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_SPIN_ANGLE_DEGREES}
+                          onChange={(value) => updateSpinStartAngle("y", value)}
+                          step={1}
+                          unit="deg"
+                          value={spinStartAngles.y}
+                        />
+                        <NumberField
+                          ariaLabel="Rotate initial Z angle"
+                          label="Z"
+                          max={MAX_PRESENTATION_SPIN_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_SPIN_ANGLE_DEGREES}
+                          onChange={(value) => updateSpinStartAngle("z", value)}
+                          step={1}
+                          unit="deg"
+                          value={spinStartAngles.z}
+                        />
+                      </FieldGrid>
+                    </InspectorCard>
+                    {SPIN_AXIS_OPTIONS.map((axisOption) => {
+                      const axisAnimation =
+                        spinAxisAnimations[axisOption.value];
+
+                      return (
+                        <InspectorCard key={axisOption.value} title={t(axisOption.label)}>
+                          <FieldRow label={t("Motion")}>
+                            <Select
+                              onChange={(event) =>
+                                updateSpinAxisAnimation(axisOption.value, {
+                                  mode: event.target
+                                    .value as PresentationSpinAnimationMode,
+                                })
+                              }
+                              value={axisAnimation.mode}
+                            >
+                              {SPIN_ANIMATION_MODE_OPTIONS.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                  {t(option.label)}
+                                </option>
+                              ))}
+                            </Select>
+                          </FieldRow>
+                          {axisAnimation.mode === "linear" ? (
+                            <NumberField
+                              ariaLabel={`${axisOption.label} linear speed`}
+                              label={t("Speed")}
+                              max={MAX_PRESENTATION_SPIN_SPEED_DEG_PER_SECOND}
+                              min={MIN_PRESENTATION_SPIN_SPEED_DEG_PER_SECOND}
+                              onChange={(value) =>
+                                updateSpinAxisAnimation(axisOption.value, {
+                                  speedDegPerSecond: value,
+                                })
+                              }
+                              step={1}
+                              unit="deg/s"
+                              value={axisAnimation.speedDegPerSecond}
+                            />
+                          ) : (
+                            <FieldGrid>
+                              <NumberField
+                                ariaLabel={`${axisOption.label} sine amplitude`}
+                                label={t("Amplitude")}
+                                max={MAX_PRESENTATION_SPIN_AMPLITUDE_DEGREES}
+                                min={MIN_PRESENTATION_SPIN_AMPLITUDE_DEGREES}
+                                onChange={(value) =>
+                                  updateSpinAxisAnimation(axisOption.value, {
+                                    amplitudeDegrees: value,
+                                  })
+                                }
+                                step={1}
+                                unit="deg"
+                                value={axisAnimation.amplitudeDegrees}
+                              />
+                              <NumberField
+                                ariaLabel={`${axisOption.label} sine frequency`}
+                                label={t("Frequency")}
+                                max={MAX_PRESENTATION_SPIN_FREQUENCY_HZ}
+                                min={MIN_PRESENTATION_SPIN_FREQUENCY_HZ}
+                                onChange={(value) =>
+                                  updateSpinAxisAnimation(axisOption.value, {
+                                    frequencyHz: value,
+                                  })
+                                }
+                                step={0.05}
+                                unit="Hz"
+                                value={axisAnimation.frequencyHz}
+                              />
+                            </FieldGrid>
+                          )}
+                        </InspectorCard>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <>
+                    <NumberField
+                      label={t("Speed")}
+                      max={MAX_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND}
+                      min={MIN_PRESENTATION_FLIP_SPEED_DEG_PER_SECOND}
+                      onChange={setFlipSpeed}
+                      step={10}
+                      unit="deg/s"
+                      value={flipSpeed}
+                    />
+                    <NumberField
+                      ariaLabel="Playback interval"
+                      label={t("Interval")}
+                      max={MAX_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS}
+                      min={MIN_PRESENTATION_FLIP_PLAYBACK_INTERVAL_SECONDS}
+                      onChange={setFlipPlaybackInterval}
+                      step={0.1}
+                      unit="s"
+                      value={flipPlaybackInterval}
+                    />
+                    <InspectorCard title={t("Starting orientation")}>
+                      <FieldGrid>
+                        <NumberField
+                          ariaLabel="Initial X angle"
+                          label="X"
+                          max={MAX_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          onChange={(value) => updateFlipStartAngle("x", value)}
+                          step={1}
+                          unit="deg"
+                          value={flipStartAngles.x}
+                        />
+                        <NumberField
+                          ariaLabel="Initial Y angle"
+                          label="Y"
+                          max={MAX_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          onChange={(value) => updateFlipStartAngle("y", value)}
+                          step={1}
+                          unit="deg"
+                          value={flipStartAngles.y}
+                        />
+                        <NumberField
+                          ariaLabel="Initial Z angle"
+                          label="Z"
+                          max={MAX_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          onChange={(value) => updateFlipStartAngle("z", value)}
+                          step={1}
+                          unit="deg"
+                          value={flipStartAngles.z}
+                        />
+                      </FieldGrid>
+                    </InspectorCard>
+                    <InspectorCard title={t("Ending orientation")}>
+                      <FieldGrid>
+                        <NumberField
+                          ariaLabel="Final X angle"
+                          label="X"
+                          max={MAX_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          onChange={(value) => updateFlipEndAngle("x", value)}
+                          step={1}
+                          unit="deg"
+                          value={flipEndAngles.x}
+                        />
+                        <NumberField
+                          ariaLabel="Final Y angle"
+                          label="Y"
+                          max={MAX_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          onChange={(value) => updateFlipEndAngle("y", value)}
+                          step={1}
+                          unit="deg"
+                          value={flipEndAngles.y}
+                        />
+                        <NumberField
+                          ariaLabel="Final Z angle"
+                          label="Z"
+                          max={MAX_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          min={MIN_PRESENTATION_FLIP_ANGLE_DEGREES}
+                          onChange={(value) => updateFlipEndAngle("z", value)}
+                          step={1}
+                          unit="deg"
+                          value={flipEndAngles.z}
+                        />
+                      </FieldGrid>
+                    </InspectorCard>
+                  </>
+                )}
+              </InspectorStack>
+            </InspectorSection>
+
+            <InspectorSection icon={<Download size={14} />} title={t("Export")}>
+              <InspectorStack>
+                <SegmentedControl
+                  onChange={updateFormat}
+                  options={PRESENTATION_EXPORT_OPTIONS.map((option) => ({
+                    label: option.label,
+                    value: option.format,
+                  }))}
+                  value={format}
+                />
+                <NumberField
+                  label={t("Duration")}
+                  max={12}
+                  min={1}
+                  onChange={setDurationSeconds}
+                  step={0.5}
+                  unit="s"
+                  value={durationSeconds}
+                />
+                <FieldRow label={t("Quality")}>
+                  <Select
+                    onChange={(event) =>
+                      setQuality(
+                        event.target.value as PresentationExportQuality,
+                      )
+                    }
+                    value={quality}
+                  >
+                    {PRESENTATION_QUALITY_OPTIONS.map((option) => (
+                      <option key={option.quality} value={option.quality}>
+                        {t(option.label)} - {option.size}px
+                      </option>
+                    ))}
+                  </Select>
+                </FieldRow>
+                <FieldRow label={t("Frame rate")}>
+                  <Select
+                    onChange={(event) =>
+                      setFrameRate(
+                        Number(event.target.value) as PresentationFrameRate,
+                      )
+                    }
+                    value={compatibleFrameRate}
+                  >
+                    {frameRateOptions.map((option) => (
+                      <option key={option.fps} value={option.fps}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                </FieldRow>
+                <InspectorSummary>
+                  {qualityOption.size}px square - {compatibleFrameRate}fps -
+                  transparent
+                  {estimatedMovSize
+                    ? ` - ~${formatByteSize(estimatedMovSize)} ProRes MOV`
+                    : ""}
+                </InspectorSummary>
+                <Button
+                  disabled={disabled}
+                  fullWidth
+                  onClick={queueExport}
+                  type="button"
+                  variant="primary"
+                >
+                  <Download size={16} />
+                  Queue {formatOption.label}
+                </Button>
+              </InspectorStack>
+            </InspectorSection>
+          </aside>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+async function requestMovSaveHandle(fileName: string, mimeType: string) {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  if (navigator.webdriver) {
+    return undefined;
+  }
+
+  const showSaveFilePicker = (window as PresentationSavePickerWindow)
+    .showSaveFilePicker;
+
+  if (!showSaveFilePicker) {
+    return undefined;
+  }
+
+  try {
+    return await showSaveFilePicker({
+      suggestedName: fileName,
+      types: [
+        {
+          accept: {
+            [mimeType]: [".mov"],
+          },
+          description: "ProRes MOV",
+        },
+      ],
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return null;
+    }
+
+    return undefined;
+  }
+}

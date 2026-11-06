@@ -1,0 +1,113 @@
+.root {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+}
+
+.trigger {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--ds-space-2);
+  width: 100%;
+  height: var(--ds-control-height);
+  border: 1px solid var(--ds-border-control);
+  border-radius: var(--ds-radius-control);
+  background: var(--ds-surface-input);
+  color: var(--ds-text-primary);
+  cursor: pointer;
+  outline: 0;
+  padding: 0 var(--ds-space-2) 0 var(--ds-space-1);
+  text-align: left;
+}
+
+.trigger:hover {
+  border-color: var(--ds-border-control-hover);
+}
+
+.trigger[aria-expanded="true"],
+.trigger:focus-visible {
+  border-color: var(--ds-focus);
+  box-shadow: 0 0 0 1px var(--ds-focus);
+}
+
+.preview {
+  display: inline-block;
+  width: 24px;
+  height: 24px;
+  background-image: var(--material-preview-src);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  pointer-events: none;
+}
+
+.name {
+  overflow: hidden;
+  font-size: var(--ds-font-size-control);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  color: var(--ds-text-tertiary);
+  transition: transform 140ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--ds-space-2));
+  right: 0;
+  left: 0;
+  z-index: 40;
+  display: grid;
+  overflow: hidden;
+  border: 1px solid var(--ds-border-control);
+  border-radius: var(--ds-radius-card);
+  background: var(--ds-surface-raised);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 16%), 0 2px 8px rgb(0 0 0 / 8%);
+}
+
+.option {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: var(--ds-space-2);
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  color: var(--ds-text-primary);
+  cursor: pointer;
+  padding: var(--ds-space-1) var(--ds-space-2);
+  text-align: left;
+}
+
+.option:hover,
+.selected {
+  background: var(--ds-surface-hover);
+}
+
+.optionText {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  font-size: var(--ds-font-size-control);
+  font-weight: var(--ds-font-weight-medium);
+}
+
+.optionText span,
+.optionText small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionText small {
+  color: var(--ds-text-tertiary);
+  font-size: 10px;
+  font-weight: 500;
+}
