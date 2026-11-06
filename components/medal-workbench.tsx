@@ -25,8 +25,6 @@ import {
 } from "lucide-react";
 import { PngImportDialog } from "@/components/png-import-dialog";
 import { MeshRepairDialog } from "@/components/mesh-repair-dialog";
-import { repairGroup } from "@/lib/mesh-repair";
-import { loadRepairOptions } from "@/components/mesh-repair-dialog";
 import {
   ChangeEvent,
   DragEvent,
@@ -1466,6 +1464,17 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
   return (
     <div className="app-shell" data-theme={editorTheme}>
       <header className="topbar">
+        <div className="brand" onClick={() => void goHome()} role="button" tabIndex={0}>
+          <span className="brand-mark">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 20V6l6 7 3-4 3 4 6-7v14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" />
+            </svg>
+          </span>
+          <span>
+            <span className="brand-name">MOLDA</span>
+            <span className="brand-sub">模界</span>
+          </span>
+        </div>
         <div className="topbar-left">
           <Button
             aria-label={t("Back to home")}
@@ -1608,7 +1617,7 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
         <MeshRepairDialog
           onApplied={(options) => {
             void options;
-            setStatus("修复参数已保存，导出时自动应用");
+            setStatus("网格处理参数已保存，导出时自动应用");
           }}
           onClose={() => setIsRepairOpen(false)}
           settings={settings}
@@ -1617,6 +1626,50 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
       ) : null}
 
       <main className="workspace">
+        <nav className="rail" aria-label="主工具栏">
+          <button className="rail-btn active" type="button" aria-label="结构">
+            <Layers3 size={17} />
+            <span className="rail-tip">结构</span>
+          </button>
+          <button
+            className="rail-btn"
+            onClick={() => uploadInputRef.current?.click()}
+            type="button"
+            aria-label="导入"
+          >
+            <Upload size={17} />
+            <span className="rail-tip">导入 SVG / PNG</span>
+          </button>
+          <button
+            className="rail-btn"
+            onClick={() => setIsRepairOpen(true)}
+            type="button"
+            aria-label="修复"
+          >
+            <Wrench size={17} />
+            <span className="rail-tip">模型修复</span>
+          </button>
+          <button
+            className="rail-btn"
+            onClick={() => setIsPresentationOpen(true)}
+            type="button"
+            aria-label="演示"
+          >
+            <Play size={17} />
+            <span className="rail-tip">演示模式</span>
+          </button>
+          <div className="rail-spacer" />
+          <div className="rail-divider" />
+          <button
+            className="rail-btn"
+            onClick={() => void goHome()}
+            type="button"
+            aria-label="返回作品库"
+          >
+            <Home size={17} />
+            <span className="rail-tip">作品库</span>
+          </button>
+        </nav>
         <aside className="layers-sidebar">
           <div className="sidebar-header">
             <span className="sidebar-header-title">

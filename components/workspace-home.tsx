@@ -1348,6 +1348,22 @@ export function WorkspaceHome() {
       onPointerUp={handlePointerUp}
       ref={viewportRef}
     >
+      <header className="brand-bar">
+        <div className="brand-bar-left">
+          <span className="brand-mark">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M3 20V6l6 7 3-4 3 4 6-7v14" stroke="currentColor" strokeWidth="2.2" strokeLinecap="square" />
+            </svg>
+          </span>
+          <span className="brand-bar-name">MOLDA</span>
+          <span className="brand-bar-sub">模界 · 三维徽章工坊</span>
+        </div>
+        <div className="brand-bar-right">
+          <span className="brand-bar-chip">SVG · PNG</span>
+          <span className="brand-bar-chip">GLB · USDZ · STL</span>
+          <span className="brand-bar-version">v2.0.0</span>
+        </div>
+      </header>
       <div className="home-backdrop" aria-hidden="true" />
       {isLivePreviewEnabled ? (
         <Suspense fallback={null}>

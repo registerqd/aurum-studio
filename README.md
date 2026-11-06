@@ -1,4 +1,4 @@
-# Aurum Studio · 鎏金工坊
+# MOLDA · 鎏金工坊
 
 把 **SVG 或位图（PNG / JPG / WebP）** 变成可分层的 3D 徽章、奖牌、金属牌匾，并导出可 3D 打印的实体模型。
 
@@ -40,10 +40,10 @@ git tag v1.1.0 && git push origin v1.1.0
 
 推送 tag 后 `.github/workflows/release.yml` 会在 windows / macOS / ubuntu 三个 runner 上分别产出：
 
-- `Aurum Studio-1.1.0-win-x64.exe`（NSIS 安装器，可选安装目录）
-- `Aurum Studio-1.1.0-win-arm64.exe`
-- `Aurum Studio-1.1.0-mac-x64.dmg` / `-arm64.dmg`
-- `Aurum Studio-1.1.0-linux-x64.AppImage` / `.deb`
+- `MOLDA-1.1.0-win-x64.exe`（NSIS 安装器，可选安装目录）
+- `MOLDA-1.1.0-win-arm64.exe`
+- `MOLDA-1.1.0-mac-x64.dmg` / `-arm64.dmg`
+- `MOLDA-1.1.0-linux-x64.AppImage` / `.deb`
 
 产物自动挂到对应 GitHub Release。
 

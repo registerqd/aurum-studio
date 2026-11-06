@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Aurum Studio",
-    short_name: "Aurum Studio",
+    name: "MOLDA",
+    short_name: "MOLDA",
     description: "Turn SVG and bitmap artwork into printable 3D medals.",
     start_url: "/",
     scope: "/",

@@ -1,7 +1,7 @@
 {
-  "name": "aurum-studio",
-  "version": "1.1.0",
-  "description": "Aurum Studio — layered SVG / bitmap to printable 3D badge workbench",
+  "name": "molda-studio",
+  "version": "2.0.0",
+  "description": "MOLDA — layered SVG / bitmap to printable 3D badge workbench",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build",
@@ -13,7 +13,7 @@
     "dist": "npm run electron:build"
   },
   "keywords": [],
-  "author": "Aurum Studio contributors",
+  "author": "MOLDA contributors",
   "license": "MIT",
   "type": "module",
   "dependencies": {
