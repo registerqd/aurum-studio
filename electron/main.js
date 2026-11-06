@@ -1,6 +1,7 @@
 const { app, BrowserWindow, shell, Menu, dialog } = require("electron");
 const path = require("node:path");
 const http = require("node:http");
+const net = require("node:net");
 
 const isDev = !app.isPackaged;
 const DEV_URL = process.env.AURUM_DEV_URL || "http://localhost:3000";
@@ -24,17 +25,28 @@ function waitForServer(url, timeoutMs = 30000) {
   });
 }
 
+function findFreePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.once("error", reject);
+    probe.listen(0, "127.0.0.1", () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
+
 async function startProductionServer() {
   // The standalone Next server is shipped in resources/app-server.
-  process.env.PORT = "0";
+  const port = await findFreePort();
+  process.env.PORT = String(port);
   process.env.HOSTNAME = "127.0.0.1";
   process.env.AURUM_DATA_DIR =
     process.env.AURUM_DATA_DIR || path.join(app.getPath("userData"), "data");
   const serverPath = path.join(process.resourcesPath, "app-server", "server.js");
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   require(serverPath);
-  const port = process.env.PORT;
-  baseUrl = `http://127.0.0.1:${port || 3000}`;
+  baseUrl = `http://127.0.0.1:${port}`;
   await waitForServer(baseUrl);
 }
 
