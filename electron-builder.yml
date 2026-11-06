@@ -1,5 +1,5 @@
-appId: studio.aurum.forge
-productName: Aurum Studio
+appId: studio.molda.app
+productName: MOLDA Studio
 copyright: Copyright © 2026 Aurum Studio contributors
 
 directories:
@@ -32,7 +32,7 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: Aurum Studio
+  shortcutName: MOLDA
 
 mac:
   target:
