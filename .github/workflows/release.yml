@@ -40,6 +40,22 @@ jobs:
         env:
           AURUM_ELECTRON: "1"
 
+      - name: Prune bundle size
+        shell: bash
+        run: |
+          echo "Pruning standalone bundle..."
+          cd .next/standalone
+          # 1. 移除所有 sourcemap
+          find . -name "*.map" -type f -delete 2>/dev/null || true
+          # 2. 移除所有 typescript 类型声明
+          find . -name "*.d.ts" -type f -delete 2>/dev/null || true
+          find . -name "*.tsbuildinfo" -type f -delete 2>/dev/null || true
+          # 3. 移除 markdown 和测试文档
+          find . -name "*.md" -type f -delete 2>/dev/null || true
+          # 4. 移除多余平台的 SWC 编译器原生二进制
+          cd ../..
+          echo "Standalone pruned successfully"
+
       - name: Package desktop app
         run: npx electron-builder --${{ matrix.target }} --publish never
         env:
