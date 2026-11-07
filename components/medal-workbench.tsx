@@ -68,6 +68,7 @@ import {
 } from "@/lib/model-export-options";
 import { enqueueModelExport } from "@/lib/export-queue";
 import { getShapeLabel, getSvgColor, resolveShapeSettings } from "@/lib/shape-settings";
+import { buildRasterShapeSettings, isRasterTrace } from "@/lib/raster-layer-init";
 import { summarizeSvgPaths } from "@/lib/svg-summary";
 import {
   createWorkDocument,
@@ -1296,9 +1297,12 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
 
     try {
       const text = await file.text();
+      const rasterSettings = isRasterTrace(text)
+        ? buildRasterShapeSettings(text)
+        : {};
       const nextSettings = {
         ...settings,
-        shapeSettings: {},
+        shapeSettings: rasterSettings,
       };
       const nextTitle = createWorkTitle(file.name);
 

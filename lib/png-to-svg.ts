@@ -21,13 +21,13 @@ export interface PngToSvgOptions {
 export const DEFAULT_PNG_TO_SVG_OPTIONS: PngToSvgOptions = {
   colors: 10,
   smoothing: 1,
-  simplify: 1.2,
+  simplify: 1.8,
   minArea: 24,
   removeBackground: true,
   backgroundTolerance: 26,
   gradientLayers: 3,
   outline: 0,
-  maxSize: 512,
+  maxSize: 384,
 };
 
 export interface SvgLayer {
@@ -395,14 +395,25 @@ export function convertImageDataToSvg(
 
   layers.sort((a, b) => b.area - a.area);
 
+  // 层数硬上限：挤出与渲染成本随层数线性增长，超出后只保留面积最大的若干层
+  const MAX_LAYERS = 48;
+  if (layers.length > MAX_LAYERS) {
+    layers.length = MAX_LAYERS;
+  }
+
+  const canvasArea = Math.max(1, width * height);
   const body = layers
-    .map(
-      (layer, i) =>
+    .map((layer, i) => {
+      const ratio = layer.area / canvasArea;
+      const isBackground = i === 0 && ratio > 0.35 ? 1 : 0;
+      return (
         `  <path id="${layer.id}" data-layer="${i}" data-band="${layer.band}" ` +
+        `data-area="${ratio.toFixed(4)}" data-bg="${isBackground}" ` +
         `data-gradient="${layer.fromGradient ? 1 : 0}" fill="${layer.color}" ` +
         `${opt.outline > 0 ? `stroke="${layer.color}" stroke-width="${opt.outline}" stroke-linejoin="round" ` : ""}` +
-        `fill-rule="evenodd" d="${layer.path}" />`,
-    )
+        `fill-rule="evenodd" d="${layer.path}" />`
+      );
+    })
     .join("\n");
 
   const svg =
