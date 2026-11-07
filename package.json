@@ -1,6 +1,6 @@
 {
   "name": "molda-studio",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "MOLDA — layered SVG / bitmap to printable 3D badge workbench",
   "scripts": {
     "dev": "next dev --webpack",
@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint && node scripts/check-design-system.mjs",
     "check:design-system": "node scripts/check-design-system.mjs",
-    "electron:dev": "cross-env AURUM_DEV_URL=http://localhost:3000 electron .",
+    "electron:dev": "cross-env AURUM_DEV_URL=http://127.0.0.1:3000 electron electron/main.cjs",
     "electron:build": "cross-env AURUM_ELECTRON=1 next build && electron-builder --config electron-builder.yml",
     "dist": "npm run electron:build"
   },
@@ -44,5 +44,5 @@
     "electron-builder": "^25.1.8",
     "cross-env": "^7.0.3"
   },
-  "main": "electron/main.js"
+  "main": "electron/main.cjs"
 }

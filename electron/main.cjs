@@ -2,28 +2,12 @@ const { app, BrowserWindow, shell, Menu, dialog } = require("electron");
 const path = require("node:path");
 const http = require("node:http");
 const net = require("node:net");
+const { fork } = require("node:child_process");
 
 const isDev = !app.isPackaged;
-const DEV_URL = process.env.AURUM_DEV_URL || "http://localhost:3000";
-let server = null;
+const DEV_URL = process.env.AURUM_DEV_URL || "http://127.0.0.1:3000";
+let serverProcess = null;
 let baseUrl = DEV_URL;
-
-function waitForServer(url, timeoutMs = 30000) {
-  const start = Date.now();
-  return new Promise((resolve, reject) => {
-    const tick = () => {
-      const req = http.get(url, (res) => {
-        res.resume();
-        resolve(true);
-      });
-      req.on("error", () => {
-        if (Date.now() - start > timeoutMs) reject(new Error("server timeout"));
-        else setTimeout(tick, 300);
-      });
-    };
-    tick();
-  });
-}
 
 function findFreePort() {
   return new Promise((resolve, reject) => {
@@ -36,31 +20,55 @@ function findFreePort() {
   });
 }
 
+function waitForServer(url, timeoutMs = 45000) {
+  const start = Date.now();
+  return new Promise((resolve, reject) => {
+    const tick = () => {
+      const req = http.get(url, (res) => {
+        res.resume();
+        resolve(true);
+      });
+      req.on("error", () => {
+        if (Date.now() - start > timeoutMs) reject(new Error("Local server launch timed out"));
+        else setTimeout(tick, 300);
+      });
+    };
+    tick();
+  });
+}
+
 async function startProductionServer() {
-  // The standalone Next server is shipped in resources/app-server.
   const port = await findFreePort();
-  process.env.PORT = String(port);
-  process.env.HOSTNAME = "127.0.0.1";
-  process.env.AURUM_DATA_DIR =
-    process.env.AURUM_DATA_DIR || path.join(app.getPath("userData"), "data");
+  const dataDir = process.env.AURUM_DATA_DIR || path.join(app.getPath("userData"), "data");
   const serverPath = path.join(process.resourcesPath, "app-server", "server.js");
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  require(serverPath);
+
+  // Run the standalone Next.js server as a child process using Electron's bundled Node runtime
+  serverProcess = fork(serverPath, [], {
+    env: {
+      ...process.env,
+      PORT: String(port),
+      HOSTNAME: "127.0.0.1",
+      AURUM_DATA_DIR: dataDir,
+      ELECTRON_RUN_AS_NODE: "1",
+    },
+    stdio: "inherit",
+  });
+
   baseUrl = `http://127.0.0.1:${port}`;
   await waitForServer(baseUrl);
 }
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1480,
-    height: 940,
-    minWidth: 1120,
-    minHeight: 720,
-    backgroundColor: "#04121a",
+    width: 1520,
+    height: 960,
+    minWidth: 1080,
+    minHeight: 700,
+    backgroundColor: "#070a0f",
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
@@ -93,13 +101,16 @@ if (!gotLock) {
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
     try {
-      if (!isDev) await startProductionServer();
-      else await waitForServer(DEV_URL).catch(() => null);
+      if (!isDev) {
+        await startProductionServer();
+      } else {
+        await waitForServer(DEV_URL).catch(() => null);
+      }
       createWindow();
     } catch (error) {
       dialog.showErrorBox(
-        "Aurum Studio 启动失败",
-        `本地服务未能启动：${error && error.message ? error.message : error}`,
+        "MOLDA Studio 启动失败",
+        `本地服务未能启动：${error && error.message ? error.message : error}`
       );
       app.quit();
     }
@@ -114,6 +125,10 @@ if (!gotLock) {
   });
 
   app.on("before-quit", () => {
-    if (server && typeof server.close === "function") server.close();
+    if (serverProcess) {
+      try {
+        serverProcess.kill();
+      } catch {}
+    }
   });
 }
