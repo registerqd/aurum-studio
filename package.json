@@ -1,6 +1,6 @@
 {
   "name": "molda-studio",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "MOLDA — layered SVG / bitmap to printable 3D badge workbench",
   "scripts": {
     "dev": "next dev --webpack",
