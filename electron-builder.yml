@@ -6,9 +6,15 @@ directories:
   output: dist
   buildResources: build
 
+# 关键：只将主进程和 preload 打入 asar，严格禁止打包任何根目录 node_modules！
 files:
   - electron/**/*
   - package.json
+  - "!node_modules/**"
+  - "!node_modules"
+  - "!**/*.map"
+  - "!**/*.d.ts"
+  - "!**/*.md"
 
 extraResources:
   - from: .next/standalone
@@ -17,9 +23,13 @@ extraResources:
     to: app-server/.next/static
   - from: public
     to: app-server/public
+    filter:
+      - "!showcase/**"
 
 asar: true
 compression: maximum
+npmRebuild: false
+nodeGypRebuild: false
 
 win:
   target:
