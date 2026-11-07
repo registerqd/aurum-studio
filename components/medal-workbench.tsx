@@ -188,8 +188,8 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
   const [settings, setSettings] = useState<MedalSettings>(DEFAULT_SETTINGS);
   const [svgText, setSvgText] = useState(DEFAULT_SVG);
   const [svgTextPreview, setSvgTextPreview] = useState<string | null>(null);
-  const [fileName, setFileName] = useState(DEFAULT_FILE_NAME);
-  const defaultTitle = createWorkTitle(DEFAULT_FILE_NAME);
+  const [fileName, setFileName] = useState("未命名徽章.svg");
+  const defaultTitle = createWorkTitle("未命名徽章.svg");
   const [workMeta, setWorkMeta] = useState(() => {
     const createdAt = createTimestamp();
 
@@ -303,6 +303,13 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
         .filter((summary): summary is SvgPathSummary => Boolean(summary)),
     [activePathSummaries, selectedPathIndexes],
   );
+    // 当有可用图层且当前未选中任何图层时，自动选中第一个图层，防止右侧属性检查器显示为空
+  useEffect(() => {
+    if (activePathSummaries.length > 0 && selectedPathIndexes.length === 0) {
+      setSelectedPathIndexes([activePathSummaries[0].pathIndex]);
+    }
+  }, [activePathSummaries, selectedPathIndexes.length]);
+
   const activeSummary = selectedSummaries[0];
   const activeShapeSettings = activeSummary
     ? resolveShapeSettings(settings, activeSummary.pathIndex, activeSummary)
@@ -1124,7 +1131,7 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
 
         if (!document) {
           const createdAt = createTimestamp();
-          const title = createWorkTitle(DEFAULT_FILE_NAME);
+          const title = createWorkTitle("未命名徽章.svg");
           setWorkMeta({
             id: initialWorkId,
             title,
@@ -1626,50 +1633,7 @@ export function MedalWorkbench({ initialWorkId }: MedalWorkbenchProps) {
       ) : null}
 
       <main className="workspace">
-        <nav className="rail" aria-label="主工具栏">
-          <button className="rail-btn active" type="button" aria-label="结构">
-            <Layers3 size={17} />
-            <span className="rail-tip">结构</span>
-          </button>
-          <button
-            className="rail-btn"
-            onClick={() => uploadInputRef.current?.click()}
-            type="button"
-            aria-label="导入"
-          >
-            <Upload size={17} />
-            <span className="rail-tip">导入 SVG / PNG</span>
-          </button>
-          <button
-            className="rail-btn"
-            onClick={() => setIsRepairOpen(true)}
-            type="button"
-            aria-label="修复"
-          >
-            <Wrench size={17} />
-            <span className="rail-tip">模型修复</span>
-          </button>
-          <button
-            className="rail-btn"
-            onClick={() => setIsPresentationOpen(true)}
-            type="button"
-            aria-label="演示"
-          >
-            <Play size={17} />
-            <span className="rail-tip">演示模式</span>
-          </button>
-          <div className="rail-spacer" />
-          <div className="rail-divider" />
-          <button
-            className="rail-btn"
-            onClick={() => void goHome()}
-            type="button"
-            aria-label="返回作品库"
-          >
-            <Home size={17} />
-            <span className="rail-tip">作品库</span>
-          </button>
-        </nav>
+        
         <aside className="layers-sidebar">
           <div className="sidebar-header">
             <span className="sidebar-header-title">
